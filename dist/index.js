@@ -9459,23 +9459,24 @@ function convert(conversions, str) {
 }
 
 function getDirsFromFiles(files) {
-  const ret = [];
+  let ret = [];
+  let dirList = [];
   const dirSet = new Set();
-  const dirList = [];
   for (const f of files) {
     let dir = f;
     while (true) {
       dir = path.dirname(dir);
-      if (!dir) {
+      if (dir === ".") {
         break;
       }
-      if (dirSet.has(dir)) {
+      if (!dirSet.has(dir)) {
         dirList.push(dir);
       }
       dirSet.add(dir);
     }
     dirList.reverse();
-    ret.concat(dirList);
+    ret = ret.concat(dirList);
+    dirList = [];
     ret.push(f);
   }
   return ret;
