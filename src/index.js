@@ -1,10 +1,8 @@
 const core = require("@actions/core");
-const main = require("./main");
-const getInputs = require("./input");
+const { main } = require("./main");
 
 try {
-  const inputs = getInputs();
-  main(inputs);
-} catch (error) {
-  core.setFailed(error.message);
+  main();
+} catch (e) {
+  core.setFailed(e.message);
 }

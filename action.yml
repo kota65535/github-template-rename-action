@@ -16,6 +16,9 @@ inputs:
     default: "Renamed"
   ignore-paths:
     description: "Paths to ignore"
+  dry-run:
+    description: "Dry run"
+    default: "false"
 runs:
   using: "node16"
   main: "dist/index.js"

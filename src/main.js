@@ -1,11 +1,63 @@
-const exec = require("./exec");
 const micromatch = require("micromatch");
 const path = require("path");
 const fs = require("fs");
 const { toJoined, toSnake, toCamel, toPascal } = require("./util");
+const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = require("./git");
+const { getInputs } = require("./input");
 
-function main(inputs) {
-  const conversions = [
+async function main() {
+  const creds = getGitCredentials();
+  const inputs = await getInputs();
+  try {
+    rename(inputs);
+  } finally {
+    setGitCredentials(creds);
+  }
+}
+
+function rename(inputs) {
+  setGitCredentials(inputs.githubToken);
+
+  const trackedFiles = listFiles();
+  const targetFiles = micromatch.not(trackedFiles, inputs.ignorePaths);
+  console.info(`${targetFiles.length} files`);
+
+  const conversions = getConversions(inputs);
+
+  // Replace file contents
+  for (const t of targetFiles) {
+    let s = fs.readFileSync(t, "utf-8");
+    s = convert(conversions, s);
+    fs.writeFileSync(t, s, "utf-8");
+  }
+
+  // Get directories where the files are located
+  const targetFilesAndDirs = getDirsFromFiles(targetFiles);
+  console.info(`${targetFilesAndDirs.length} files and directories`);
+
+  // Rename files and directories
+  const cwd = process.cwd();
+  for (const t of targetFilesAndDirs) {
+    const fromBase = path.basename(t);
+    const fromDir = path.dirname(t);
+    const toBase = convert(conversions, fromBase);
+    const toDir = convert(conversions, fromDir);
+    if (fromBase !== toBase) {
+      process.chdir(toDir);
+      fs.renameSync(fromBase, toBase);
+      process.chdir(cwd);
+    }
+  }
+
+  if (!inputs.dryRun) {
+    commitAndPush(inputs.commitMessage);
+  } else {
+    console.info("Skip commit & push because dry-run is true");
+  }
+}
+
+function getConversions(inputs) {
+  return [
     {
       from: inputs.fromName,
       to: inputs.toName,
@@ -27,36 +79,6 @@ function main(inputs) {
       to: toPascal(inputs.toName),
     },
   ];
-
-  const cwd = process.cwd();
-
-  const res = exec("git", ["ls-files"]);
-  const trackedFiles = res.stdout.split("\n");
-  const targetFiles = micromatch.not(trackedFiles, inputs.ignorePaths);
-  console.info(targetFiles);
-
-  // Replace file contents
-  for (const t of targetFiles) {
-    let s = fs.readFileSync(t, "utf-8");
-    s = convert(conversions, s);
-    fs.writeFileSync(t, s, "utf-8");
-  }
-
-  // Rename files and directories
-  const targetFilesAndDirs = getDirsFromFiles(targetFiles);
-  console.info(targetFilesAndDirs);
-
-  for (const t of targetFilesAndDirs) {
-    const fromBase = path.basename(t);
-    const fromDir = path.dirname(t);
-    const toBase = convert(conversions, fromBase);
-    const toDir = convert(conversions, fromDir);
-    if (fromBase !== toBase) {
-      process.chdir(toDir);
-      fs.renameSync(fromBase, toBase);
-      process.chdir(cwd);
-    }
-  }
 }
 
 function convert(conversions, str) {
@@ -88,4 +110,7 @@ function getDirsFromFiles(files) {
   return ret;
 }
 
-module.exports = main;
+module.exports = {
+  main,
+  rename,
+};

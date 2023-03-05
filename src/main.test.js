@@ -1,20 +1,21 @@
 const assert = require("assert");
-const main = require("./main");
 const fs = require("fs");
+const { rename } = require("./main");
 
-describe("util", () => {
-  it("to joined", () => {
-    main({
+describe("rename", () => {
+  it("rename", () => {
+    rename({
       fromName: "foo-bar",
       toName: "baz",
       ignorePaths: ["src/*.test.js", ".*/**/test.yml"],
+      dryRun: true,
     });
-    const txt = fs.readFileSync(".github/workflows/test.txt", "utf-8");
+    const txt = fs.readFileSync(".github/test.txt", "utf-8");
     assert.equal(txt, "baz,baz,baz,Baz\n");
   });
 
   afterAll(() => {
     const data = "foo-bar,foo_bar,fooBar,FooBar\n";
-    fs.writeFileSync(".github/workflows/test.txt", data, "utf-8");
+    fs.writeFileSync(".github/test.txt", data, "utf-8");
   });
 });

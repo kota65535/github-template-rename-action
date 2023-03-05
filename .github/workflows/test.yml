@@ -34,7 +34,9 @@ jobs:
           to-name: "hoge-piyo"
           ignore-paths: |
             src/*.test.js
+            .github/workflows/*
+          dry-run: true
       - name: Assert outputs
         run: |
-          cat .github/workflows/test.txt
-          [ "$(cat .github/workflows/test.txt)" = "hoge-piyo,hoge_piyo,hogePiyo,HogePiyo" ]
+          cat .github/test.txt
+          [ "$(cat .github/test.txt)" = "hoge-piyo,hoge_piyo,hogePiyo,HogePiyo" ]
