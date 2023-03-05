@@ -26,7 +26,7 @@ jobs:
       - name: Rename project
         uses: ./
         with:
-          from-name: "aaa"
+          from-name: "bbb"
           to-name: "bbb"
       - name: Assert outputs
         run: |

@@ -86,11 +86,8 @@ EOF
 # Change directory to the repository root
 cd "$(git rev-parse --show-toplevel)"
 
-eecho "[INFO] Replacing names in non-binary files..."
-# Filter non-binary files by grep -I
-# cf. https://unix.stackexchange.com/questions/46276/finding-all-non-binary-files
-git ls-files | xargs -I{} grep -l -I . {} \
-  | xargs -I{} perl -i \
+eecho "[INFO] Replacing names in files..."
+git ls-files | xargs -I{} perl -i \
     -pe "s/${ORIG_NAME}/${NEW_NAME}/g;" \
     -pe "s/${ORIG_NAME_JOIN}/${NEW_NAME_JOIN}/g;" \
     -pe "s/${ORIG_NAME_SNAKE}/${NEW_NAME_SNAKE}/g;" \

@@ -16,12 +16,6 @@ inputs:
     default: "Renamed"
   ignore-paths:
     description: "Paths to ignore"
-
 runs:
-  using: docker
-  image: Dockerfile
-  env:
-    GITHUB_TOKEN: ${{ inputs.github-token }}
-    FROM_NAME: ${{ inputs.from-name }}
-    TO_NAME: ${{ inputs.to-name }}
-    COMMIT_MESSAGE: ${{ inputs.commit-message }}
+  using: "node16"
+  main: "dist/index.js"
