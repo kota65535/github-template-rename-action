@@ -30,7 +30,7 @@ jobs:
       - name: Rename project
         uses: ./
         with:
-          from-name: "baz-baz-baz"
+          from-name: "foo-bar"
           to-name: "hoge-piyo"
           ignore-paths: |
             src/*.test.js

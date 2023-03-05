@@ -7,7 +7,7 @@ describe("util", () => {
     main({
       fromName: "foo-bar",
       toName: "baz",
-      ignorePaths: ["src/*.test.js"],
+      ignorePaths: ["src/*.test.js", ".*/**/test.yml"],
     });
     const txt = fs.readFileSync(".github/workflows/test.txt", "utf-8");
     assert.equal(txt, "baz,baz,baz,Baz\n");
