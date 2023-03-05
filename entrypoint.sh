@@ -9,8 +9,6 @@ if ! [[ -v GITHUB_TOKEN ]]; then
   exit 1
 fi
 
-gh auth login --git-protocol "https" --hostname "github.com" --with-token <<< "${GITHUB_TOKEN}"
-
 REPO_NAME_FULL="$(gh repo view --json nameWithOwner --jq ".nameWithOwner")"
 
 if ! [[ -v FROM_NAME ]]; then
