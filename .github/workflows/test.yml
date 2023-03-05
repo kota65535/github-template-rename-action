@@ -23,16 +23,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: aaa
-        uses: actions/github-script@v6
-        with:
-          script: |
-            console.error("aaa");
-            console.warn("bbb");
-            console.info("ccc");
-            console.debug("ddd");
       - name: Rename project
         uses: ./
+        with:
+          from-name: "aaa"
+          to-name: "bbb"
       - name: Assert outputs
         run: |
           tree
