@@ -1,0 +1,43 @@
+{
+  "name": "github-template-rename-action",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [
+    "github",
+    "actions"
+  ],
+  "homepage": "https://github.com/kota65535/github-template-rename-action#readme",
+  "bugs": {
+    "url": "https://github.com/kota65535/github-template-rename-action/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kota65535/github-template-rename-action.git"
+  },
+  "license": "MIT",
+  "author": "Tomohiko Ozawa <kota65535@gmail.com>",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jest",
+    "build": "ncc build src/index.js",
+    "format": "prettier --write \"src/**/*.js\"",
+    "lint": "eslint --fix \"src/**/*.js\"",
+    "prepare": "husky install"
+  },
+  "dependencies": {
+    "@actions/core": "1.10.0",
+    "@actions/github": "5.1.1",
+    "execa": "5.1.1",
+    "micromatch": "4.0.5"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "0.36.0",
+    "eslint": "8.31.0",
+    "eslint-config-prettier": "8.6.0",
+    "eslint-config-standard": "17.0.0",
+    "eslint-plugin-jest": "27.2.1",
+    "husky": "8.0.3",
+    "jest": "29.4.3",
+    "prettier": "2.8.4"
+  }
+}

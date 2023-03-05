@@ -1,0 +1,21 @@
+name: "Template Repository Rename"
+description: ""
+branding:
+  icon: "settings"
+  color: "white"
+inputs:
+  github-token:
+    description: "GitHub token"
+    default: ${{ github.token }}
+  from-name:
+    description: "From name"
+  to-name:
+    description: "To name"
+  commit-message:
+    description: "Commit message"
+    default: "Renamed"
+  ignore-paths:
+    description: "Paths to ignore"
+runs:
+  using: "node16"
+  main: "dist/index.js"

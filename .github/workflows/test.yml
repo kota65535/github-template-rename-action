@@ -1,0 +1,40 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - README.md
+  pull_request:
+
+
+jobs:
+  show-context:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show github context object
+        run: echo $JSON
+        env:
+          JSON: ${{ toJSON(github) }}
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Test
+        run: |
+          npm install
+          npm run test
+      - name: Rename project
+        uses: ./
+        with:
+          from-name: "foo-bar"
+          to-name: "hoge-piyo"
+          ignore-paths: |
+            src/*.test.js
+      - name: Assert outputs
+        run: |
+          cat .github/workflows/test.txt
+          [ "$(cat .github/workflows/test.txt)" = "hoge-piyo,hoge_piyo,hogePiyo,HogePiyo" ]
