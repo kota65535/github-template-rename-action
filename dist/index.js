@@ -9366,7 +9366,10 @@ const getInputs = () => {
   const toName = core.getInput("to-name");
   const githubToken = core.getInput("github-token");
   const commitMessage = core.getInput("commit-message");
-  const ignorePaths = core.getInput("ignore-paths").split("\n");
+  const ignorePaths = core
+    .getInput("ignore-paths")
+    .split("\n")
+    .filter((f) => f);
 
   const ret = {
     fromName,
