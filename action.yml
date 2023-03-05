@@ -1,0 +1,23 @@
+name: "Template Repository Rename"
+description: ""
+branding:
+  icon: "settings"
+  color: "white"
+inputs:
+  github-token:
+    description: "GitHub token"
+    required: true
+    default: ${{ github.token }}
+  from-name:
+    description: "From name"
+    required: false
+  to-name:
+    description: "To name"
+    required: false
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    GITHUB_TOKEN: ${{ inputs.github-token }}
+    FROM_NAME: ${{ inputs.from-name }}
+    TO_NAME: ${{ inputs.to-name }}
