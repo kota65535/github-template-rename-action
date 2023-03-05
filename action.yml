@@ -6,18 +6,20 @@ branding:
 inputs:
   github-token:
     description: "GitHub token"
-    required: true
     default: ${{ github.token }}
   from-name:
     description: "From name"
-    required: false
   to-name:
     description: "To name"
-    required: false
+  commit-message:
+    description: "Commit message"
+    default: "Renamed"
+
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: docker
+  image: Dockerfile
   env:
     GITHUB_TOKEN: ${{ inputs.github-token }}
     FROM_NAME: ${{ inputs.from-name }}
     TO_NAME: ${{ inputs.to-name }}
+    COMMIT_MESSAGE: ${{ inputs.commit-message }}
