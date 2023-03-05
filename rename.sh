@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# set -x
+#set -x
 
 export LC_ALL=C
 
@@ -73,13 +73,14 @@ NEW_NAME_CAMEL=$(to_camel_case "${NEW_NAME}")
 NEW_NAME_PASCAL=$(to_pascal_case "${NEW_NAME}")
 
 eecho "[INFO] Following names are to be replaced"
+LEN=${#ORIG_NAME}
 cat << EOF 1>&2
-ORIGINAL\tRENAMED
-${ORIG_NAME}\t${NEW_NAME}
-${ORIG_NAME_JOIN}\t${NEW_NAME_JOIN}
-${ORIG_NAME_SNAKE}\t${NEW_NAME_SNAKE}
-${ORIG_NAME_CAMEL}\t${NEW_NAME_CAMEL}
-${ORIG_NAME_PASCAL}\t${NEW_NAME_PASCAL}
+ORIGINAL RENAMED
+$(printf "%${LEN}s" "${ORIG_NAME}") $(printf "%${LEN}s" "${NEW_NAME}")
+$(printf "%${LEN}s" "${ORIG_NAME_JOIN}") $(printf "%${LEN}s" "${NEW_NAME_JOIN}")
+$(printf "%${LEN}s" "${ORIG_NAME_SNAKE}") $(printf "%${LEN}s" "${NEW_NAME_SNAKE}")
+$(printf "%${LEN}s" "${ORIG_NAME_CAMEL}") $(printf "%${LEN}s" "${NEW_NAME_CAMEL}")
+$(printf "%${LEN}s" "${ORIG_NAME_PASCAL}") $(printf "%${LEN}s" "${NEW_NAME_PASCAL}")
 EOF
 
 # Change directory to the repository root
@@ -87,28 +88,50 @@ cd "$(git rev-parse --show-toplevel)"
 
 eecho "[INFO] Replacing names in non-binary files..."
 # Filter non-binary files by grep -I
-# cf. https://unix.stackexchange.com/questions/46276/finding-all-non-binary-files 
-find . -type f -not -path './.git/*' -exec grep -I -q . {} \; -print0 \
-  | xargs -0 -I{} perl -i \
+# cf. https://unix.stackexchange.com/questions/46276/finding-all-non-binary-files
+git ls-files | xargs -I{} grep -l -I . {} \
+  | xargs -I{} perl -i \
     -pe "s/${ORIG_NAME}/${NEW_NAME}/g;" \
     -pe "s/${ORIG_NAME_JOIN}/${NEW_NAME_JOIN}/g;" \
     -pe "s/${ORIG_NAME_SNAKE}/${NEW_NAME_SNAKE}/g;" \
     -pe "s/${ORIG_NAME_CAMEL}/${NEW_NAME_CAMEL}/g;" \
     -pe "s/${ORIG_NAME_PASCAL}/${NEW_NAME_PASCAL}/g;" {}
 
+git_ls_with_dirs() {
+  FILES=()
+  while read -r file; do
+    dir="${file}"
+    dirs=()
+    while true; do
+      dir="$(dirname "${dir}")"
+      if [[ "${dir}" = "." ]]; then
+        break
+      fi
+      dirs+=("${dir}")
+    done
+    FILES+=("${dirs[@]}")
+
+    FILES+=("${file}")
+  done < <(git ls-files)
+  IFS_OLD=$IFS
+  IFS=$'\n'
+  echo "${FILES[*]}" | sort | uniq
+  IFS=${IFS_OLD}
+}
+
 eecho "[INFO] Renaming files and directories..."
-find . -not -path './.git/*' | while read -r name; do
+while read -r name; do
   new_name=${name}
   new_name="${new_name//${ORIG_NAME}/${NEW_NAME}}"
   new_name="${new_name//${ORIG_NAME_JOIN}/${NEW_NAME_JOIN}}"
   new_name="${new_name//${ORIG_NAME_SNAKE}/${NEW_NAME_SNAKE}}"
   new_name="${new_name//${ORIG_NAME_CAMEL}/${NEW_NAME_CAMEL}}"
   new_name="${new_name//${ORIG_NAME_PASCAL}/${NEW_NAME_PASCAL}}"
-  
+
   orig_base="$(basename "${name}")"
   new_dir="$(dirname "${new_name}")"
   new_base="$(basename "${new_name}")"
-  
+
   # Rename if the basename doe does not match
   if [[ "${orig_base}" != "${new_base}" ]]; then
     # Since 'find' command visits directories in pre-order, the dirname should have already been renamed
@@ -116,4 +139,4 @@ find . -not -path './.git/*' | while read -r name; do
     mv "${orig_base}" "${new_base}"
     popd > /dev/null
   fi
-done
+done < <(git_ls_with_dirs)

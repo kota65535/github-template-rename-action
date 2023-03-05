@@ -14,6 +14,8 @@ inputs:
   commit-message:
     description: "Commit message"
     default: "Renamed"
+  ignore-paths:
+    description: "Paths to ignore"
 
 runs:
   using: docker
