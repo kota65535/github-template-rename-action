@@ -1,5 +1,4 @@
 const exec = require("./exec");
-const core = require("@actions/core");
 const micromatch = require("micromatch");
 const path = require("path");
 const fs = require("fs");

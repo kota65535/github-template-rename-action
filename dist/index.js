@@ -9391,7 +9391,6 @@ module.exports = getInputs;
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const exec = __nccwpck_require__(3264);
-const core = __nccwpck_require__(2186);
 const micromatch = __nccwpck_require__(6228);
 const path = __nccwpck_require__(1017);
 const fs = __nccwpck_require__(7147);

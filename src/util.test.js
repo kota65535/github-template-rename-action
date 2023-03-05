@@ -3,7 +3,6 @@ const { toJoined, toSnake, toCamel, toPascal } = require("./util");
 
 describe("util", () => {
   it("to joined", () => {
-    expect();
     assert.equal(toJoined("foo-bar"), "foobar");
   });
   it("to snake case", () => {
