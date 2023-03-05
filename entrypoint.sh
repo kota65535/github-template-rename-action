@@ -4,6 +4,10 @@ set -x
 
 export LC_ALL=C
 
+git config --global user.email "github-actions[bot]@users.noreply.github.com"
+git config --global user.name "github-actions[bot]"
+git config --global --add safe.directory /github/workspace
+
 if ! [[ -v GITHUB_TOKEN ]]; then
   echo "GITHUB_TOKEN env var is not defined."
   exit 1
