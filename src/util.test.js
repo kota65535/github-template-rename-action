@@ -1,17 +1,18 @@
 const assert = require("assert");
-const {toJoined, toSnake, toCamel, toPascal} = require("./util");
+const { toJoined, toSnake, toCamel, toPascal } = require("./util");
 
 describe("util", () => {
   it("to joined", () => {
-    assert.equal(toJoined("sample-basic"), "samplebasic")
+    expect();
+    assert.equal(toJoined("foo-bar"), "foobar");
   });
   it("to snake case", () => {
-    assert.equal(toSnake("sample-basic"), "sample_basic")
+    assert.equal(toSnake("foo-bar"), "foo_bar");
   });
   it("to camel case", () => {
-    assert.equal(toCamel("sample-basic"), "sampleBasic")
+    assert.equal(toCamel("foo-bar"), "fooBar");
   });
   it("to pascal case", () => {
-    assert.equal(toPascal("sample-basic"), "SampleBasic")
+    assert.equal(toPascal("foo-bar"), "FooBar");
   });
 });

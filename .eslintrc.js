@@ -1,7 +1,12 @@
 module.exports = {
   env: {
     es2021: true,
-    node: true,
+    node: true
   },
-  extends: ["eslint:recommended", "standard", "prettier"],
+  extends: [
+    "eslint:recommended",
+    "standard",
+    "prettier",
+    "plugin:jest/recommended",
+  ],
 };

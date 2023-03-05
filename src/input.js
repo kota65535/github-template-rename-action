@@ -5,14 +5,14 @@ const getInputs = () => {
   const toName = core.getInput("to-name");
   const githubToken = core.getInput("github-token");
   const commitMessage = core.getInput("commit-message");
-  const ignorePaths = core.getInput("ignore-paths");
+  const ignorePaths = core.getInput("ignore-paths").split("\n");
 
   const ret = {
     fromName,
     toName,
     githubToken,
     commitMessage,
-    ignorePaths
+    ignorePaths,
   };
   console.info(ret);
   return ret;
