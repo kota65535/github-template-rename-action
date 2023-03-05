@@ -36,4 +36,5 @@ jobs:
             src/*.test.js
       - name: Assert outputs
         run: |
+          cat .github/workflows/test.txt
           [ "$(cat .github/workflows/test.txt)" = "hoge-piyo,hoge_piyo,hogePiyo,HogePiyo" ]
