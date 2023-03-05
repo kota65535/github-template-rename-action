@@ -23,11 +23,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Test
+        run: npm run test
       - name: Rename project
         uses: ./
         with:
-          from-name: "bbb"
-          to-name: "bbb"
+          from-name: "baz-baz-baz"
+          to-name: "hoge-piyo"
+          ignore-paths: |
+            src/*.test.js
       - name: Assert outputs
         run: |
-          tree
+          [ "$(cat .github/workflows/test.txt)" = "hoge-piyo,hoge_piyo,hogePiyo,HogePiyo" ]

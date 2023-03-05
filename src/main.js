@@ -39,7 +39,6 @@ function main(inputs) {
   for (const t of targetFiles) {
     let s = fs.readFileSync(t, "utf-8");
     s = convert(conversions, s);
-    conversions.forEach((c) => (s = s.replace(c.from, c.to)));
     fs.writeFileSync(t, s, "utf-8");
   }
 
@@ -61,7 +60,7 @@ function main(inputs) {
 }
 
 function convert(conversions, str) {
-  conversions.forEach((c) => (str = str.replace(c.from, c.to)));
+  conversions.forEach((c) => (str = str.replaceAll(c.from, c.to)));
   return str;
 }
 
