@@ -16382,7 +16382,7 @@ module.exports = {
 const micromatch = __nccwpck_require__(6228);
 const path = __nccwpck_require__(1017);
 const fs = __nccwpck_require__(7147);
-const { toJoined, toSnake, toCamel, toPascal } = __nccwpck_require__(6254);
+const { toJoined, toSnake, toCamel, toPascal, toKebab } = __nccwpck_require__(6254);
 const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = __nccwpck_require__(109);
 const { getInputs } = __nccwpck_require__(6);
 
@@ -16404,6 +16404,7 @@ function rename(inputs) {
   console.info(`${targetFiles.length} files`);
 
   const conversions = getConversions(inputs);
+  console.info("conversions:", conversions);
 
   // Replace file contents
   for (const t of targetFiles) {
@@ -16438,26 +16439,28 @@ function rename(inputs) {
 }
 
 function getConversions(inputs) {
+  const fromName = toKebab(inputs.fromName);
+  const toName = toKebab(inputs.toName);
   return [
     {
-      from: inputs.fromName,
-      to: inputs.toName,
+      from: fromName,
+      to: toName,
     },
     {
-      from: toJoined(inputs.fromName),
-      to: toJoined(inputs.toName),
+      from: toJoined(fromName),
+      to: toJoined(toName),
     },
     {
-      from: toSnake(inputs.fromName),
-      to: toSnake(inputs.toName),
+      from: toSnake(fromName),
+      to: toSnake(toName),
     },
     {
-      from: toCamel(inputs.fromName),
-      to: toCamel(inputs.toName),
+      from: toCamel(fromName),
+      to: toCamel(toName),
     },
     {
-      from: toPascal(inputs.fromName),
-      to: toPascal(inputs.toName),
+      from: toPascal(fromName),
+      to: toPascal(toName),
     },
   ];
 }
@@ -16523,11 +16526,33 @@ function toPascal(str) {
   return tokens.map((s) => `${s[0].toUpperCase()}${s.slice(1)}`).join("");
 }
 
+function toKebab(str) {
+  for (const c of str) {
+    switch (c) {
+      case "-":
+        return str;
+      case "_":
+        return str.replaceAll("_", "-");
+    }
+  }
+
+  let ret = str[0].toLowerCase();
+  for (const c of str.slice(1)) {
+    if (c === c.toUpperCase()) {
+      ret += `-${c.toLowerCase()}`;
+    } else {
+      ret += c;
+    }
+  }
+  return ret;
+}
+
 module.exports = {
   toJoined,
   toSnake,
   toCamel,
   toPascal,
+  toKebab,
 };
 
 
