@@ -1,7 +1,7 @@
 const micromatch = require("micromatch");
 const path = require("path");
 const fs = require("fs");
-const { toJoined, toSnake, toCamel, toPascal } = require("./util");
+const { toJoined, toSnake, toCamel, toPascal, toKebab } = require("./util");
 const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = require("./git");
 const { getInputs } = require("./input");
 
@@ -23,6 +23,7 @@ function rename(inputs) {
   console.info(`${targetFiles.length} files`);
 
   const conversions = getConversions(inputs);
+  console.info("conversions:", conversions);
 
   // Replace file contents
   for (const t of targetFiles) {
@@ -57,26 +58,28 @@ function rename(inputs) {
 }
 
 function getConversions(inputs) {
+  const fromName = toKebab(inputs.fromName);
+  const toName = toKebab(inputs.toName);
   return [
     {
-      from: inputs.fromName,
-      to: inputs.toName,
+      from: fromName,
+      to: toName,
     },
     {
-      from: toJoined(inputs.fromName),
-      to: toJoined(inputs.toName),
+      from: toJoined(fromName),
+      to: toJoined(toName),
     },
     {
-      from: toSnake(inputs.fromName),
-      to: toSnake(inputs.toName),
+      from: toSnake(fromName),
+      to: toSnake(toName),
     },
     {
-      from: toCamel(inputs.fromName),
-      to: toCamel(inputs.toName),
+      from: toCamel(fromName),
+      to: toCamel(toName),
     },
     {
-      from: toPascal(inputs.fromName),
-      to: toPascal(inputs.toName),
+      from: toPascal(fromName),
+      to: toPascal(toName),
     },
   ];
 }
