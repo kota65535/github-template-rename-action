@@ -46,12 +46,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
       - name: Rename project with the same name
         uses: ./
         with:
           from-name: "foo-bar"
           to-name: "foo_bar"
-      - name: Assert
+      - name: Assert the working tree is clean
         run: |
           git diff-index --cached --quiet HEAD
           [ "$(git log origin/main..main)" = "" ]
