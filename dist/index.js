@@ -16365,7 +16365,7 @@ const extraHeaderKey = `http.https://github.com/.extraHeader`;
 
 function listFiles() {
   const { stdout } = exec("git", ["ls-files"]);
-  return stdout.split("\n");
+  return stdout.split("\n").filter((s) => s);
 }
 
 function setUserAsBot() {
@@ -16395,13 +16395,13 @@ function setGitCredentials(token) {
 
 function commitAndPush(message) {
   setUserAsBot();
+  exec("git", ["add", "."]);
   try {
     exec("git", ["diff-index", "--cached", "--quiet", "HEAD"]);
     return;
   } catch (e) {
     // do nothing
   }
-  exec("git", ["add", "."]);
   exec("git", ["commit", "-m", message]);
   exec("git", ["push", "origin", "HEAD"]);
 }
