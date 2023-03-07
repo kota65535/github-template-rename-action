@@ -1,5 +1,5 @@
-name: "Template Repository Rename"
-description: ""
+name: "Rename Template Repository"
+description: "Replace & Rename files and directories of a repository created from a template repository"
 branding:
   icon: "copy"
   color: "white"
@@ -8,11 +8,11 @@ inputs:
     description: "Project name from the template repository"
   to-name:
     description: "New project name"
-  ignore-paths:
+  paths-ignore:
     description: "Paths to ignore"
   commit-message:
     description: "Commit message"
-    default: "renamed"
+    default: "rename"
   github-token:
     description: "GitHub token"
   default-github-token:
