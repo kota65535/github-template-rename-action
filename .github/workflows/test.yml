@@ -55,5 +55,6 @@ jobs:
           to-name: "foo_bar"
       - name: Assert the working tree is clean
         run: |
+          git status
           git diff-index --cached --quiet HEAD
           [[ "$(git status)" =~ "nothing to commit, working directory clean" ]] 
