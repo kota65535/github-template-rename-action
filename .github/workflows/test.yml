@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Test
+      - name: Run test
         run: |
           npm install
           npm run test
@@ -41,20 +41,22 @@ jobs:
           cat .github/test.txt
           [ "$(cat .github/test.txt)" = "hoge-piyo,hoge_piyo,hogePiyo,HogePiyo" ]
   
-  test2:
+  test-noop:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Test
-        run: |
-          npm install
-          npm run test
-      - name: Rename project
+      - name: Rename project with the same name
         uses: ./
         with:
           from-name: "foo-bar"
           to-name: "foo_bar"
-          ignore-paths: |
-            src/*.test.js
-            .github/workflows/*
+      - name: Rename project with the same name
+        uses: ./
+        with:
+          from-name: "foo-bar"
+          to-name: "foo_bar"
+      - name: Assert
+        run: |
+          git diff-index --cached --quiet HEAD
+          [ "$(git log origin/main..main)" = "" ]
