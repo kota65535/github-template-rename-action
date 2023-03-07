@@ -2,13 +2,10 @@
 
 GitHub Action for replacing & renaming files and directories of a repository created from a template repository.
 
-A [template repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template)
-is a convenient way to create a new repository with the same directory structure and files as an
-existing repository.
-Since current template repositories do not have the ability to customize new repositories on
-creation,
-we often have to manually replace the identifiers derived from the project name in files and file
-names.
+[Template repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template)
+is a convenient way to create a new repository with the same directory structure and files as an existing repository.
+Since current template repositories do not have the ability to customize new repositories on creation,
+we often have to manually replace the identifiers derived from the project name in files and file names.
 This action does it for you.
 
 ## Features
@@ -25,10 +22,10 @@ This action does it for you.
 
 | Name             | Description                                                                                    | Required | Default                                                 |
 |------------------|------------------------------------------------------------------------------------------------|----------|---------------------------------------------------------|
-| `from-name`      | Project name to be replaced. Should be kebab, snake, camel or pascal case.                     | Yes      | Name of the template repository                         |
-| `to-name`        | New project name to replace with. Should be kebab, snake, camel or pascal case.                | Yes      | Name of the repository this action is run               |
+| `from-name`      | Project name to be replaced. Should be kebab, snake, camel or pascal case.                     | No       | Name of the template repository                         |
+| `to-name`        | New project name to replace with. Should be kebab, snake, camel or pascal case.                | No       | Name of your repository                                 |
 | `paths-ignore`   | Paths to ignore. Accepts [micromatch](https://github.com/micromatch/micromatch) glob patterns. | No       | N/A                                                     |
-| `commit-message` | Commit message                                                                                 | Yes      | `rename`                                                | 
+| `commit-message` | Commit message                                                                                 | No       | `rename`                                                | 
 | `github-token`   | GitHub token                                                                                   | No       | `${{ env.GITHUB_TOKEN }}` or<br/> `${{ github.token }}` | 
 | `dry-run`        | Dry-run or not. If true, it does not perform commit & push.                                    | No       | `false`                                                 |
 
@@ -37,18 +34,20 @@ This action does it for you.
 ```yaml
 
   # Replacement & Renaming occurs as follows:
+  #
   #   the-sample -> my-project
   #   thesample  -> myproject
   #   the_sample -> my_project
   #   theSample  -> myProject
   #   TheSample  -> MyProject
+  #
   - uses: kota65535/github-template-rename-action@v1
     with:
       from-name: the-sample
       to-name: my-project
 
-  # You need to use GitHub personal access token with workflow scope if you are to update workflow 
-  # files.
+  # You need to use GitHub personal access token with workflow scope if you are to update 
+  # workflow files.
   - uses: kota65535/github-template-rename-action@v1
     with:
       from-name: the-sample

@@ -1,7 +1,7 @@
 {
   "name": "github-template-rename-action",
   "version": "1.0.0",
-  "description": "Replace & Rename files and directories of a repository created from a template repository",
+  "description": "GitHub Action for replacing & renaming files and directories of a repository created from a template repository.",
   "keywords": [
     "github",
     "actions"
