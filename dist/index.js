@@ -16245,6 +16245,96 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 4255:
+/***/ ((module) => {
+
+function toJoined(str) {
+  return str.replace("-", "");
+}
+
+function toSnake(str) {
+  return str.replace("-", "_");
+}
+
+function toCamel(str) {
+  const tokens = str.split("-");
+  return `${tokens[0]}${tokens
+    .slice(1)
+    .map((s) => `${s[0].toUpperCase()}${s.slice(1)}`)
+    .join("")}`;
+}
+
+function toPascal(str) {
+  const tokens = str.split("-");
+  return tokens.map((s) => `${s[0].toUpperCase()}${s.slice(1)}`).join("");
+}
+
+function toKebab(str) {
+  for (const c of str) {
+    switch (c) {
+      case "-":
+        return str;
+      case "_":
+        return str.replaceAll("_", "-");
+    }
+  }
+
+  let ret = str[0].toLowerCase();
+  for (const c of str.slice(1)) {
+    if (c === c.toUpperCase()) {
+      ret += `-${c.toLowerCase()}`;
+    } else {
+      ret += c;
+    }
+  }
+  return ret;
+}
+
+function createConversions(fromName, toName) {
+  fromName = toKebab(fromName);
+  toName = toKebab(toName);
+  return [
+    {
+      from: fromName,
+      to: toName,
+    },
+    {
+      from: toJoined(fromName),
+      to: toJoined(toName),
+    },
+    {
+      from: toSnake(fromName),
+      to: toSnake(toName),
+    },
+    {
+      from: toCamel(fromName),
+      to: toCamel(toName),
+    },
+    {
+      from: toPascal(fromName),
+      to: toPascal(toName),
+    },
+  ];
+}
+
+function convert(conversions, str) {
+  conversions.forEach((c) => (str = str.replaceAll(c.from, c.to)));
+  return str;
+}
+
+module.exports = {
+  createConversions,
+  convert,
+  toJoined,
+  toSnake,
+  toCamel,
+  toPascal,
+  toKebab,
+};
+
+
+/***/ }),
+
 /***/ 3264:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -16252,8 +16342,10 @@ const execa = __nccwpck_require__(5447);
 const core = __nccwpck_require__(2186);
 
 const exec = (file, options) => {
-  core.info(`running command: ${file} ${(options || []).join(" ")}`);
-  return execa.sync(file, options);
+  core.debug(`running command: ${file} ${(options || []).join(" ")}`);
+  const res = execa.sync(file, options);
+  core.debug(res.stdout);
+  return res;
 };
 
 module.exports = {
@@ -16304,7 +16396,7 @@ function setGitCredentials(token) {
 function commitAndPush(message) {
   setUserAsBot();
   try {
-    exec("git", ["diff", "--quiet"]);
+    exec("git", ["diff-index", "--quiet", "HEAD"]);
     return;
   } catch (e) {
     // do nothing
@@ -16324,12 +16416,40 @@ module.exports = {
 
 /***/ }),
 
+/***/ 8396:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const { getOctokit } = __nccwpck_require__(5438);
+const { context } = __nccwpck_require__(5438);
+
+let octokit;
+
+const initOctokit = (token) => {
+  octokit = getOctokit(token);
+};
+
+const getRepo = async () => {
+  const res = await octokit.rest.repos.get({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+  });
+  return res.data;
+};
+
+module.exports = {
+  initOctokit,
+  getRepo,
+};
+
+
+/***/ }),
+
 /***/ 6:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const core = __nccwpck_require__(2186);
-const { getOctokit } = __nccwpck_require__(5438);
-const { context } = __nccwpck_require__(5438);
+const { initOctokit, getRepo } = __nccwpck_require__(8396);
+const { toJson } = __nccwpck_require__(6254);
 
 const getInputs = async () => {
   let fromName = core.getInput("from-name");
@@ -16350,18 +16470,16 @@ const getInputs = async () => {
   }
 
   if (!(fromName && toName)) {
-    const octokit = getOctokit(githubToken);
-    const res = await octokit.rest.repos.get({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-    });
+    initOctokit(githubToken);
+    const repo = await getRepo();
     if (!fromName) {
-      fromName = res.data.template_repository.name;
-      console.info(`Using '${fromName}' as from-name`);
+      if (!repo.template_repository) {
+        throw new Error("Could not get template repository. Try GitHub personal access token for github-token input");
+      }
+      fromName = repo.template_repository.name;
     }
     if (!toName) {
-      toName = res.data.name;
-      console.info(`Using '${toName}' as to-name`);
+      toName = repo.name;
     }
   }
 
@@ -16373,7 +16491,7 @@ const getInputs = async () => {
     ignorePaths,
     dryRun,
   };
-  console.info(ret);
+  core.info(toJson(ret));
   return ret;
 };
 
@@ -16387,49 +16505,51 @@ module.exports = {
 /***/ 1713:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-const micromatch = __nccwpck_require__(6228);
 const path = __nccwpck_require__(1017);
 const fs = __nccwpck_require__(7147);
-const { toJoined, toSnake, toCamel, toPascal, toKebab } = __nccwpck_require__(6254);
+const core = __nccwpck_require__(2186);
+const micromatch = __nccwpck_require__(6228);
+const { createConversions, convert } = __nccwpck_require__(4255);
 const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = __nccwpck_require__(109);
 const { getInputs } = __nccwpck_require__(6);
+const { toJson } = __nccwpck_require__(6254);
 
 async function main() {
-  const creds = getGitCredentials();
   const inputs = await getInputs();
+  const creds = getGitCredentials();
+  setGitCredentials(inputs.githubToken);
   try {
     rename(inputs);
   } finally {
+    // Restore credentials
     setGitCredentials(creds);
   }
 }
 
 function rename(inputs) {
-  setGitCredentials(inputs.githubToken);
+  let files = listFiles();
+  files = micromatch.not(files, inputs.ignorePaths);
+  core.info(`replacing ${files.length} files`);
 
-  const trackedFiles = listFiles();
-  const targetFiles = micromatch.not(trackedFiles, inputs.ignorePaths);
-  console.info(`${targetFiles.length} files`);
-
-  const conversions = getConversions(inputs);
-  console.info("conversions:", conversions);
+  const conversions = createConversions(inputs.fromName, inputs.toName);
+  core.info(`conversions: ${toJson(conversions)}`);
 
   // Replace file contents
-  for (const t of targetFiles) {
-    let s = fs.readFileSync(t, "utf-8");
+  for (const f of files) {
+    let s = fs.readFileSync(f, "utf8");
     s = convert(conversions, s);
-    fs.writeFileSync(t, s, "utf-8");
+    fs.writeFileSync(f, s, "utf8");
   }
 
   // Get directories where the files are located
-  const targetFilesAndDirs = getDirsFromFiles(targetFiles);
-  console.info(`${targetFilesAndDirs.length} files and directories`);
+  const filesAndDirs = getDirsFromFiles(files);
+  core.info(`renaming ${filesAndDirs.length} files and directories`);
 
   // Rename files and directories
   const cwd = process.cwd();
-  for (const t of targetFilesAndDirs) {
-    const fromBase = path.basename(t);
-    const fromDir = path.dirname(t);
+  for (const f of filesAndDirs) {
+    const fromBase = path.basename(f);
+    const fromDir = path.dirname(f);
     const toBase = convert(conversions, fromBase);
     const toDir = convert(conversions, fromDir);
     if (fromBase !== toBase) {
@@ -16442,40 +16562,8 @@ function rename(inputs) {
   if (!inputs.dryRun) {
     commitAndPush(inputs.commitMessage);
   } else {
-    console.info("Skip commit & push because dry-run is true");
+    core.info("Skip commit & push because dry-run is true");
   }
-}
-
-function getConversions(inputs) {
-  const fromName = toKebab(inputs.fromName);
-  const toName = toKebab(inputs.toName);
-  return [
-    {
-      from: fromName,
-      to: toName,
-    },
-    {
-      from: toJoined(fromName),
-      to: toJoined(toName),
-    },
-    {
-      from: toSnake(fromName),
-      to: toSnake(toName),
-    },
-    {
-      from: toCamel(fromName),
-      to: toCamel(toName),
-    },
-    {
-      from: toPascal(fromName),
-      to: toPascal(toName),
-    },
-  ];
-}
-
-function convert(conversions, str) {
-  conversions.forEach((c) => (str = str.replaceAll(c.from, c.to)));
-  return str;
 }
 
 function getDirsFromFiles(files) {
@@ -16513,55 +16601,13 @@ module.exports = {
 /***/ 6254:
 /***/ ((module) => {
 
-function toJoined(str) {
-  return str.replace("-", "");
-}
-
-function toSnake(str) {
-  return str.replace("-", "_");
-}
-
-function toCamel(str) {
-  const tokens = str.split("-");
-  return `${tokens[0]}${tokens
-    .slice(1)
-    .map((s) => `${s[0].toUpperCase()}${s.slice(1)}`)
-    .join("")}`;
-}
-
-function toPascal(str) {
-  const tokens = str.split("-");
-  return tokens.map((s) => `${s[0].toUpperCase()}${s.slice(1)}`).join("");
-}
-
-function toKebab(str) {
-  for (const c of str) {
-    switch (c) {
-      case "-":
-        return str;
-      case "_":
-        return str.replaceAll("_", "-");
-    }
-  }
-
-  let ret = str[0].toLowerCase();
-  for (const c of str.slice(1)) {
-    if (c === c.toUpperCase()) {
-      ret += `-${c.toLowerCase()}`;
-    } else {
-      ret += c;
-    }
-  }
-  return ret;
+function toJson(obj) {
+  return JSON.stringify(obj, null, 2);
 }
 
 module.exports = {
-  toJoined,
-  toSnake,
-  toCamel,
-  toPascal,
-  toKebab,
-};
+  toJson
+}
 
 
 /***/ }),

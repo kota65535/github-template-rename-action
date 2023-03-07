@@ -1,46 +1,48 @@
-const micromatch = require("micromatch");
 const path = require("path");
 const fs = require("fs");
-const { toJoined, toSnake, toCamel, toPascal, toKebab } = require("./util");
+const core = require("@actions/core");
+const micromatch = require("micromatch");
+const { createConversions, convert } = require("./convert");
 const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = require("./git");
 const { getInputs } = require("./input");
+const { toJson } = require("./util");
 
 async function main() {
-  const creds = getGitCredentials();
   const inputs = await getInputs();
+  const creds = getGitCredentials();
+  setGitCredentials(inputs.githubToken);
   try {
     rename(inputs);
   } finally {
+    // Restore credentials
     setGitCredentials(creds);
   }
 }
 
 function rename(inputs) {
-  setGitCredentials(inputs.githubToken);
+  let files = listFiles();
+  files = micromatch.not(files, inputs.ignorePaths);
+  core.info(`replacing ${files.length} files`);
 
-  const trackedFiles = listFiles();
-  const targetFiles = micromatch.not(trackedFiles, inputs.ignorePaths);
-  console.info(`${targetFiles.length} files`);
-
-  const conversions = getConversions(inputs);
-  console.info("conversions:", conversions);
+  const conversions = createConversions(inputs.fromName, inputs.toName);
+  core.info(`conversions: ${toJson(conversions)}`);
 
   // Replace file contents
-  for (const t of targetFiles) {
-    let s = fs.readFileSync(t, "utf-8");
+  for (const f of files) {
+    let s = fs.readFileSync(f, "utf8");
     s = convert(conversions, s);
-    fs.writeFileSync(t, s, "utf-8");
+    fs.writeFileSync(f, s, "utf8");
   }
 
   // Get directories where the files are located
-  const targetFilesAndDirs = getDirsFromFiles(targetFiles);
-  console.info(`${targetFilesAndDirs.length} files and directories`);
+  const filesAndDirs = getDirsFromFiles(files);
+  core.info(`renaming ${filesAndDirs.length} files and directories`);
 
   // Rename files and directories
   const cwd = process.cwd();
-  for (const t of targetFilesAndDirs) {
-    const fromBase = path.basename(t);
-    const fromDir = path.dirname(t);
+  for (const f of filesAndDirs) {
+    const fromBase = path.basename(f);
+    const fromDir = path.dirname(f);
     const toBase = convert(conversions, fromBase);
     const toDir = convert(conversions, fromDir);
     if (fromBase !== toBase) {
@@ -53,40 +55,8 @@ function rename(inputs) {
   if (!inputs.dryRun) {
     commitAndPush(inputs.commitMessage);
   } else {
-    console.info("Skip commit & push because dry-run is true");
+    core.info("Skip commit & push because dry-run is true");
   }
-}
-
-function getConversions(inputs) {
-  const fromName = toKebab(inputs.fromName);
-  const toName = toKebab(inputs.toName);
-  return [
-    {
-      from: fromName,
-      to: toName,
-    },
-    {
-      from: toJoined(fromName),
-      to: toJoined(toName),
-    },
-    {
-      from: toSnake(fromName),
-      to: toSnake(toName),
-    },
-    {
-      from: toCamel(fromName),
-      to: toCamel(toName),
-    },
-    {
-      from: toPascal(fromName),
-      to: toPascal(toName),
-    },
-  ];
-}
-
-function convert(conversions, str) {
-  conversions.forEach((c) => (str = str.replaceAll(c.from, c.to)));
-  return str;
 }
 
 function getDirsFromFiles(files) {

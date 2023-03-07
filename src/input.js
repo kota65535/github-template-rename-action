@@ -1,6 +1,6 @@
 const core = require("@actions/core");
-const { getOctokit } = require("@actions/github");
-const { context } = require("@actions/github");
+const { initOctokit, getRepo } = require("./github");
+const { toJson } = require("./util");
 
 const getInputs = async () => {
   let fromName = core.getInput("from-name");
@@ -21,18 +21,16 @@ const getInputs = async () => {
   }
 
   if (!(fromName && toName)) {
-    const octokit = getOctokit(githubToken);
-    const res = await octokit.rest.repos.get({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-    });
+    initOctokit(githubToken);
+    const repo = await getRepo();
     if (!fromName) {
-      fromName = res.data.template_repository.name;
-      console.info(`Using '${fromName}' as from-name`);
+      if (!repo.template_repository) {
+        throw new Error("Could not get template repository. Try GitHub personal access token for github-token input");
+      }
+      fromName = repo.template_repository.name;
     }
     if (!toName) {
-      toName = res.data.name;
-      console.info(`Using '${toName}' as to-name`);
+      toName = repo.name;
     }
   }
 
@@ -44,7 +42,7 @@ const getInputs = async () => {
     ignorePaths,
     dryRun,
   };
-  console.info(ret);
+  core.info(toJson(ret));
   return ret;
 };
 
