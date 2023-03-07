@@ -40,7 +40,41 @@ function toKebab(str) {
   return ret;
 }
 
+function createConversions(fromName, toName) {
+  fromName = toKebab(fromName);
+  toName = toKebab(toName);
+  return [
+    {
+      from: fromName,
+      to: toName,
+    },
+    {
+      from: toJoined(fromName),
+      to: toJoined(toName),
+    },
+    {
+      from: toSnake(fromName),
+      to: toSnake(toName),
+    },
+    {
+      from: toCamel(fromName),
+      to: toCamel(toName),
+    },
+    {
+      from: toPascal(fromName),
+      to: toPascal(toName),
+    },
+  ];
+}
+
+function convert(conversions, str) {
+  conversions.forEach((c) => (str = str.replaceAll(c.from, c.to)));
+  return str;
+}
+
 module.exports = {
+  createConversions,
+  convert,
   toJoined,
   toSnake,
   toCamel,

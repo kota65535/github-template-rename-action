@@ -20,19 +20,19 @@ const getInputs = async () => {
     throw new Error("No GitHub token provided");
   }
 
+  const octokit = getOctokit(githubToken);
+  const res = await octokit.rest.repos.get({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+  });
+  const templateRepo = res.data.template_repository.full_name;
+
   if (!(fromName && toName)) {
-    const octokit = getOctokit(githubToken);
-    const res = await octokit.rest.repos.get({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-    });
     if (!fromName) {
       fromName = res.data.template_repository.name;
-      console.info(`Using '${fromName}' as from-name`);
     }
     if (!toName) {
       toName = res.data.name;
-      console.info(`Using '${toName}' as to-name`);
     }
   }
 
@@ -43,8 +43,9 @@ const getInputs = async () => {
     commitMessage,
     ignorePaths,
     dryRun,
+    templateRepo,
   };
-  console.info(ret);
+  core.info(JSON.stringify(ret, null, 2));
   return ret;
 };
 

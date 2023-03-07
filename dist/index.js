@@ -16252,8 +16252,10 @@ const execa = __nccwpck_require__(5447);
 const core = __nccwpck_require__(2186);
 
 const exec = (file, options) => {
-  core.info(`running command: ${file} ${(options || []).join(" ")}`);
-  return execa.sync(file, options);
+  core.debug(`running command: ${file} ${(options || []).join(" ")}`);
+  const res = execa.sync(file, options);
+  core.debug(res.stdout);
+  return res;
 };
 
 module.exports = {
@@ -16304,7 +16306,7 @@ function setGitCredentials(token) {
 function commitAndPush(message) {
   setUserAsBot();
   try {
-    exec("git", ["diff", "--quiet"]);
+    exec("git", ["diff-index", "--quiet", "HEAD"]);
     return;
   } catch (e) {
     // do nothing
@@ -16349,19 +16351,19 @@ const getInputs = async () => {
     throw new Error("No GitHub token provided");
   }
 
+  const octokit = getOctokit(githubToken);
+  const res = await octokit.rest.repos.get({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+  });
+  const templateRepo = res.data.template_repository.full_name;
+
   if (!(fromName && toName)) {
-    const octokit = getOctokit(githubToken);
-    const res = await octokit.rest.repos.get({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-    });
     if (!fromName) {
       fromName = res.data.template_repository.name;
-      console.info(`Using '${fromName}' as from-name`);
     }
     if (!toName) {
       toName = res.data.name;
-      console.info(`Using '${toName}' as to-name`);
     }
   }
 
@@ -16372,8 +16374,9 @@ const getInputs = async () => {
     commitMessage,
     ignorePaths,
     dryRun,
+    templateRepo,
   };
-  console.info(ret);
+  core.info(JSON.stringify(ret, null, 2));
   return ret;
 };
 
@@ -16387,49 +16390,50 @@ module.exports = {
 /***/ 1713:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-const micromatch = __nccwpck_require__(6228);
 const path = __nccwpck_require__(1017);
 const fs = __nccwpck_require__(7147);
-const { toJoined, toSnake, toCamel, toPascal, toKebab } = __nccwpck_require__(6254);
+const core = __nccwpck_require__(2186);
+const micromatch = __nccwpck_require__(6228);
+const { createConversions, convert } = __nccwpck_require__(6254);
 const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = __nccwpck_require__(109);
 const { getInputs } = __nccwpck_require__(6);
 
 async function main() {
-  const creds = getGitCredentials();
   const inputs = await getInputs();
+  const creds = getGitCredentials();
+  setGitCredentials(inputs.githubToken);
   try {
     rename(inputs);
   } finally {
+    // Restore credentials
     setGitCredentials(creds);
   }
 }
 
 function rename(inputs) {
-  setGitCredentials(inputs.githubToken);
+  let files = listFiles();
+  files = micromatch.not(files, inputs.ignorePaths);
+  core.info(`replacing ${files.length} files`);
 
-  const trackedFiles = listFiles();
-  const targetFiles = micromatch.not(trackedFiles, inputs.ignorePaths);
-  console.info(`${targetFiles.length} files`);
-
-  const conversions = getConversions(inputs);
-  console.info("conversions:", conversions);
+  const conversions = createConversions(inputs.fromName, inputs.toName);
+  core.info(`conversions: ${toJson(conversions)}`);
 
   // Replace file contents
-  for (const t of targetFiles) {
-    let s = fs.readFileSync(t, "utf-8");
+  for (const f of files) {
+    let s = fs.readFileSync(f, "utf8");
     s = convert(conversions, s);
-    fs.writeFileSync(t, s, "utf-8");
+    fs.writeFileSync(f, s, "utf8");
   }
 
   // Get directories where the files are located
-  const targetFilesAndDirs = getDirsFromFiles(targetFiles);
-  console.info(`${targetFilesAndDirs.length} files and directories`);
+  const filesAndDirs = getDirsFromFiles(files);
+  core.info(`renaming ${filesAndDirs.length} files and directories`);
 
   // Rename files and directories
   const cwd = process.cwd();
-  for (const t of targetFilesAndDirs) {
-    const fromBase = path.basename(t);
-    const fromDir = path.dirname(t);
+  for (const f of filesAndDirs) {
+    const fromBase = path.basename(f);
+    const fromDir = path.dirname(f);
     const toBase = convert(conversions, fromBase);
     const toDir = convert(conversions, fromDir);
     if (fromBase !== toBase) {
@@ -16442,40 +16446,8 @@ function rename(inputs) {
   if (!inputs.dryRun) {
     commitAndPush(inputs.commitMessage);
   } else {
-    console.info("Skip commit & push because dry-run is true");
+    core.info("Skip commit & push because dry-run is true");
   }
-}
-
-function getConversions(inputs) {
-  const fromName = toKebab(inputs.fromName);
-  const toName = toKebab(inputs.toName);
-  return [
-    {
-      from: fromName,
-      to: toName,
-    },
-    {
-      from: toJoined(fromName),
-      to: toJoined(toName),
-    },
-    {
-      from: toSnake(fromName),
-      to: toSnake(toName),
-    },
-    {
-      from: toCamel(fromName),
-      to: toCamel(toName),
-    },
-    {
-      from: toPascal(fromName),
-      to: toPascal(toName),
-    },
-  ];
-}
-
-function convert(conversions, str) {
-  conversions.forEach((c) => (str = str.replaceAll(c.from, c.to)));
-  return str;
 }
 
 function getDirsFromFiles(files) {
@@ -16502,9 +16474,12 @@ function getDirsFromFiles(files) {
   return ret;
 }
 
+function toJson(obj) {
+  return JSON.stringify(obj, null, 2);
+}
+
 module.exports = {
   main,
-  rename,
 };
 
 
@@ -16555,7 +16530,41 @@ function toKebab(str) {
   return ret;
 }
 
+function createConversions(fromName, toName) {
+  fromName = toKebab(fromName);
+  toName = toKebab(toName);
+  return [
+    {
+      from: fromName,
+      to: toName,
+    },
+    {
+      from: toJoined(fromName),
+      to: toJoined(toName),
+    },
+    {
+      from: toSnake(fromName),
+      to: toSnake(toName),
+    },
+    {
+      from: toCamel(fromName),
+      to: toCamel(toName),
+    },
+    {
+      from: toPascal(fromName),
+      to: toPascal(toName),
+    },
+  ];
+}
+
+function convert(conversions, str) {
+  conversions.forEach((c) => (str = str.replaceAll(c.from, c.to)));
+  return str;
+}
+
 module.exports = {
+  createConversions,
+  convert,
   toJoined,
   toSnake,
   toCamel,
