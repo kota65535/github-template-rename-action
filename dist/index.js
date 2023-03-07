@@ -16245,247 +16245,7 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 3264:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const execa = __nccwpck_require__(5447);
-const core = __nccwpck_require__(2186);
-
-const exec = (file, options) => {
-  core.debug(`running command: ${file} ${(options || []).join(" ")}`);
-  const res = execa.sync(file, options);
-  core.debug(res.stdout);
-  return res;
-};
-
-module.exports = {
-  exec,
-};
-
-
-/***/ }),
-
-/***/ 109:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const core = __nccwpck_require__(2186);
-const { exec } = __nccwpck_require__(3264);
-
-const extraHeaderKey = `http.https://github.com/.extraHeader`;
-
-function listFiles() {
-  const { stdout } = exec("git", ["ls-files"]);
-  return stdout.split("\n");
-}
-
-function setUserAsBot() {
-  exec("git", ["config", "user.email", "github-actions[bot]@users.noreply.github.com"]);
-  exec("git", ["config", "user.name", "github-actions[bot]"]);
-}
-
-function getGitCredentials() {
-  try {
-    const { stdout } = exec("git", ["config", "--get", extraHeaderKey, "^AUTHORIZATION: basic"]);
-    return stdout;
-  } catch (e) {
-    return "";
-  }
-}
-
-function setGitCredentials(token) {
-  if (!token) {
-    return;
-  }
-  // cf. https://github.com/actions/checkout/blob/main/src/git-auth-helper.ts#L57
-  const base64Token = Buffer.from(`x-access-token:${token}`, "utf8").toString("base64");
-  core.setSecret(base64Token);
-  exec("git", ["config", "--unset-all", extraHeaderKey, "^AUTHORIZATION: basic"]);
-  exec("git", ["config", extraHeaderKey, `AUTHORIZATION: basic ${base64Token}`]);
-}
-
-function commitAndPush(message) {
-  setUserAsBot();
-  try {
-    exec("git", ["diff-index", "--quiet", "HEAD"]);
-    return;
-  } catch (e) {
-    // do nothing
-  }
-  exec("git", ["add", "."]);
-  exec("git", ["commit", "-m", message]);
-  exec("git", ["push", "origin", "HEAD"]);
-}
-
-module.exports = {
-  listFiles,
-  getGitCredentials,
-  setGitCredentials,
-  commitAndPush,
-};
-
-
-/***/ }),
-
-/***/ 6:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const core = __nccwpck_require__(2186);
-const { getOctokit } = __nccwpck_require__(5438);
-const { context } = __nccwpck_require__(5438);
-
-const getInputs = async () => {
-  let fromName = core.getInput("from-name");
-  let toName = core.getInput("to-name");
-  const ignorePaths = core
-    .getInput("ignore-paths")
-    .split("\n")
-    .filter((f) => f);
-  const commitMessage = core.getInput("commit-message");
-  const dryRun = core.getInput("dry-run") === "true";
-
-  let githubToken = core.getInput("github-token");
-  const defaultGithubToken = core.getInput("default-github-token");
-
-  githubToken = githubToken || process.env.GITHUB_TOKEN || defaultGithubToken;
-  if (!githubToken) {
-    throw new Error("No GitHub token provided");
-  }
-
-  const octokit = getOctokit(githubToken);
-  const res = await octokit.rest.repos.get({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-  });
-  const templateRepo = res.data.template_repository.full_name;
-
-  if (!(fromName && toName)) {
-    if (!fromName) {
-      fromName = res.data.template_repository.name;
-    }
-    if (!toName) {
-      toName = res.data.name;
-    }
-  }
-
-  const ret = {
-    fromName,
-    toName,
-    githubToken,
-    commitMessage,
-    ignorePaths,
-    dryRun,
-    templateRepo,
-  };
-  core.info(JSON.stringify(ret, null, 2));
-  return ret;
-};
-
-module.exports = {
-  getInputs,
-};
-
-
-/***/ }),
-
-/***/ 1713:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const path = __nccwpck_require__(1017);
-const fs = __nccwpck_require__(7147);
-const core = __nccwpck_require__(2186);
-const micromatch = __nccwpck_require__(6228);
-const { createConversions, convert } = __nccwpck_require__(6254);
-const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = __nccwpck_require__(109);
-const { getInputs } = __nccwpck_require__(6);
-
-async function main() {
-  const inputs = await getInputs();
-  const creds = getGitCredentials();
-  setGitCredentials(inputs.githubToken);
-  try {
-    rename(inputs);
-  } finally {
-    // Restore credentials
-    setGitCredentials(creds);
-  }
-}
-
-function rename(inputs) {
-  let files = listFiles();
-  files = micromatch.not(files, inputs.ignorePaths);
-  core.info(`replacing ${files.length} files`);
-
-  const conversions = createConversions(inputs.fromName, inputs.toName);
-  core.info(`conversions: ${toJson(conversions)}`);
-
-  // Replace file contents
-  for (const f of files) {
-    let s = fs.readFileSync(f, "utf8");
-    s = convert(conversions, s);
-    fs.writeFileSync(f, s, "utf8");
-  }
-
-  // Get directories where the files are located
-  const filesAndDirs = getDirsFromFiles(files);
-  core.info(`renaming ${filesAndDirs.length} files and directories`);
-
-  // Rename files and directories
-  const cwd = process.cwd();
-  for (const f of filesAndDirs) {
-    const fromBase = path.basename(f);
-    const fromDir = path.dirname(f);
-    const toBase = convert(conversions, fromBase);
-    const toDir = convert(conversions, fromDir);
-    if (fromBase !== toBase) {
-      process.chdir(toDir);
-      fs.renameSync(fromBase, toBase);
-      process.chdir(cwd);
-    }
-  }
-
-  if (!inputs.dryRun) {
-    commitAndPush(inputs.commitMessage);
-  } else {
-    core.info("Skip commit & push because dry-run is true");
-  }
-}
-
-function getDirsFromFiles(files) {
-  let ret = [];
-  let dirList = [];
-  const dirSet = new Set();
-  for (const f of files) {
-    let dir = f;
-    while (true) {
-      dir = path.dirname(dir);
-      if (dir === ".") {
-        break;
-      }
-      if (!dirSet.has(dir)) {
-        dirList.push(dir);
-      }
-      dirSet.add(dir);
-    }
-    dirList.reverse();
-    ret = ret.concat(dirList);
-    dirList = [];
-    ret.push(f);
-  }
-  return ret;
-}
-
-function toJson(obj) {
-  return JSON.stringify(obj, null, 2);
-}
-
-module.exports = {
-  main,
-};
-
-
-/***/ }),
-
-/***/ 6254:
+/***/ 4255:
 /***/ ((module) => {
 
 function toJoined(str) {
@@ -16571,6 +16331,283 @@ module.exports = {
   toPascal,
   toKebab,
 };
+
+
+/***/ }),
+
+/***/ 3264:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const execa = __nccwpck_require__(5447);
+const core = __nccwpck_require__(2186);
+
+const exec = (file, options) => {
+  core.debug(`running command: ${file} ${(options || []).join(" ")}`);
+  const res = execa.sync(file, options);
+  core.debug(res.stdout);
+  return res;
+};
+
+module.exports = {
+  exec,
+};
+
+
+/***/ }),
+
+/***/ 109:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const core = __nccwpck_require__(2186);
+const { exec } = __nccwpck_require__(3264);
+
+const extraHeaderKey = `http.https://github.com/.extraHeader`;
+
+function listFiles() {
+  const { stdout } = exec("git", ["ls-files"]);
+  return stdout.split("\n");
+}
+
+function setUserAsBot() {
+  exec("git", ["config", "user.email", "github-actions[bot]@users.noreply.github.com"]);
+  exec("git", ["config", "user.name", "github-actions[bot]"]);
+}
+
+function getGitCredentials() {
+  try {
+    const { stdout } = exec("git", ["config", "--get", extraHeaderKey, "^AUTHORIZATION: basic"]);
+    return stdout;
+  } catch (e) {
+    return "";
+  }
+}
+
+function setGitCredentials(token) {
+  if (!token) {
+    return;
+  }
+  // cf. https://github.com/actions/checkout/blob/main/src/git-auth-helper.ts#L57
+  const base64Token = Buffer.from(`x-access-token:${token}`, "utf8").toString("base64");
+  core.setSecret(base64Token);
+  exec("git", ["config", "--unset-all", extraHeaderKey, "^AUTHORIZATION: basic"]);
+  exec("git", ["config", extraHeaderKey, `AUTHORIZATION: basic ${base64Token}`]);
+}
+
+function commitAndPush(message) {
+  setUserAsBot();
+  try {
+    exec("git", ["diff-index", "--quiet", "HEAD"]);
+    return;
+  } catch (e) {
+    // do nothing
+  }
+  exec("git", ["add", "."]);
+  exec("git", ["commit", "-m", message]);
+  exec("git", ["push", "origin", "HEAD"]);
+}
+
+module.exports = {
+  listFiles,
+  getGitCredentials,
+  setGitCredentials,
+  commitAndPush,
+};
+
+
+/***/ }),
+
+/***/ 8396:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const { getOctokit } = __nccwpck_require__(5438);
+const { context } = __nccwpck_require__(5438);
+
+let octokit;
+
+const initOctokit = (token) => {
+  octokit = getOctokit(token);
+};
+
+const getRepo = async () => {
+  const res = await octokit.rest.repos.get({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+  });
+  return res.data;
+};
+
+module.exports = {
+  initOctokit,
+  getRepo,
+};
+
+
+/***/ }),
+
+/***/ 6:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const core = __nccwpck_require__(2186);
+const { initOctokit, getRepo } = __nccwpck_require__(8396);
+const { toJson } = __nccwpck_require__(6254);
+
+const getInputs = async () => {
+  let fromName = core.getInput("from-name");
+  let toName = core.getInput("to-name");
+  const ignorePaths = core
+    .getInput("ignore-paths")
+    .split("\n")
+    .filter((f) => f);
+  const commitMessage = core.getInput("commit-message");
+  const dryRun = core.getInput("dry-run") === "true";
+
+  let githubToken = core.getInput("github-token");
+  const defaultGithubToken = core.getInput("default-github-token");
+
+  githubToken = githubToken || process.env.GITHUB_TOKEN || defaultGithubToken;
+  if (!githubToken) {
+    throw new Error("No GitHub token provided");
+  }
+
+  if (!(fromName && toName)) {
+    initOctokit(githubToken);
+    const repo = await getRepo();
+    if (!fromName) {
+      if (!repo.template_repository) {
+        throw new Error("Could not get template repository. Try GitHub personal access token for github-token input");
+      }
+      fromName = repo.template_repository.name;
+    }
+    if (!toName) {
+      toName = repo.name;
+    }
+  }
+
+  const ret = {
+    fromName,
+    toName,
+    githubToken,
+    commitMessage,
+    ignorePaths,
+    dryRun,
+  };
+  core.info(toJson(ret));
+  return ret;
+};
+
+module.exports = {
+  getInputs,
+};
+
+
+/***/ }),
+
+/***/ 1713:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const path = __nccwpck_require__(1017);
+const fs = __nccwpck_require__(7147);
+const core = __nccwpck_require__(2186);
+const micromatch = __nccwpck_require__(6228);
+const { createConversions, convert } = __nccwpck_require__(4255);
+const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = __nccwpck_require__(109);
+const { getInputs } = __nccwpck_require__(6);
+const { toJson } = __nccwpck_require__(6254);
+
+async function main() {
+  const inputs = await getInputs();
+  const creds = getGitCredentials();
+  setGitCredentials(inputs.githubToken);
+  try {
+    rename(inputs);
+  } finally {
+    // Restore credentials
+    setGitCredentials(creds);
+  }
+}
+
+function rename(inputs) {
+  let files = listFiles();
+  files = micromatch.not(files, inputs.ignorePaths);
+  core.info(`replacing ${files.length} files`);
+
+  const conversions = createConversions(inputs.fromName, inputs.toName);
+  core.info(`conversions: ${toJson(conversions)}`);
+
+  // Replace file contents
+  for (const f of files) {
+    let s = fs.readFileSync(f, "utf8");
+    s = convert(conversions, s);
+    fs.writeFileSync(f, s, "utf8");
+  }
+
+  // Get directories where the files are located
+  const filesAndDirs = getDirsFromFiles(files);
+  core.info(`renaming ${filesAndDirs.length} files and directories`);
+
+  // Rename files and directories
+  const cwd = process.cwd();
+  for (const f of filesAndDirs) {
+    const fromBase = path.basename(f);
+    const fromDir = path.dirname(f);
+    const toBase = convert(conversions, fromBase);
+    const toDir = convert(conversions, fromDir);
+    if (fromBase !== toBase) {
+      process.chdir(toDir);
+      fs.renameSync(fromBase, toBase);
+      process.chdir(cwd);
+    }
+  }
+
+  if (!inputs.dryRun) {
+    commitAndPush(inputs.commitMessage);
+  } else {
+    core.info("Skip commit & push because dry-run is true");
+  }
+}
+
+function getDirsFromFiles(files) {
+  let ret = [];
+  let dirList = [];
+  const dirSet = new Set();
+  for (const f of files) {
+    let dir = f;
+    while (true) {
+      dir = path.dirname(dir);
+      if (dir === ".") {
+        break;
+      }
+      if (!dirSet.has(dir)) {
+        dirList.push(dir);
+      }
+      dirSet.add(dir);
+    }
+    dirList.reverse();
+    ret = ret.concat(dirList);
+    dirList = [];
+    ret.push(f);
+  }
+  return ret;
+}
+
+module.exports = {
+  main,
+  rename,
+};
+
+
+/***/ }),
+
+/***/ 6254:
+/***/ ((module) => {
+
+function toJson(obj) {
+  return JSON.stringify(obj, null, 2);
+}
+
+module.exports = {
+  toJson
+}
 
 
 /***/ }),

@@ -2,9 +2,10 @@ const path = require("path");
 const fs = require("fs");
 const core = require("@actions/core");
 const micromatch = require("micromatch");
-const { createConversions, convert } = require("./util");
+const { createConversions, convert } = require("./convert");
 const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = require("./git");
 const { getInputs } = require("./input");
+const { toJson } = require("./util");
 
 async function main() {
   const inputs = await getInputs();
@@ -82,10 +83,7 @@ function getDirsFromFiles(files) {
   return ret;
 }
 
-function toJson(obj) {
-  return JSON.stringify(obj, null, 2);
-}
-
 module.exports = {
   main,
+  rename,
 };

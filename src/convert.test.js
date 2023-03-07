@@ -1,5 +1,5 @@
 const assert = require("assert");
-const { toJoined, toSnake, toCamel, toPascal, toKebab } = require("./util");
+const { toJoined, toSnake, toCamel, toPascal, toKebab } = require("./convert");
 
 describe("util", () => {
   it("kebab to joined", () => {
