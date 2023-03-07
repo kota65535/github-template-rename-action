@@ -1,6 +1,6 @@
 const core = require("@actions/core");
 const { initOctokit, getRepo } = require("./github");
-const { toJson } = require("./util");
+const { logJson } = require("./util");
 
 const getInputs = async () => {
   let fromName = core.getInput("from-name");
@@ -42,7 +42,7 @@ const getInputs = async () => {
     ignorePaths,
     dryRun,
   };
-  core.info(toJson(ret));
+  logJson("inputs", ret);
   return ret;
 };
 

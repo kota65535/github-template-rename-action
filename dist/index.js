@@ -16449,7 +16449,7 @@ module.exports = {
 
 const core = __nccwpck_require__(2186);
 const { initOctokit, getRepo } = __nccwpck_require__(8396);
-const { toJson } = __nccwpck_require__(6254);
+const { logJson } = __nccwpck_require__(6254);
 
 const getInputs = async () => {
   let fromName = core.getInput("from-name");
@@ -16491,7 +16491,7 @@ const getInputs = async () => {
     ignorePaths,
     dryRun,
   };
-  core.info(toJson(ret));
+  logJson("inputs", ret);
   return ret;
 };
 
@@ -16512,7 +16512,7 @@ const micromatch = __nccwpck_require__(6228);
 const { createConversions, convert } = __nccwpck_require__(4255);
 const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = __nccwpck_require__(109);
 const { getInputs } = __nccwpck_require__(6);
-const { toJson } = __nccwpck_require__(6254);
+const { logJson } = __nccwpck_require__(6254);
 
 async function main() {
   const inputs = await getInputs();
@@ -16528,11 +16528,13 @@ async function main() {
 
 function rename(inputs) {
   let files = listFiles();
-  files = micromatch.not(files, inputs.ignorePaths);
-  core.info(`replacing ${files.length} files`);
+  let ignored;
+  [files, ignored] = ignoreFiles(files, inputs.ignorePaths);
+  logJson(`ignored ${ignored.length} files`, ignored);
+  logJson(`replacing ${files.length} files`, files);
 
   const conversions = createConversions(inputs.fromName, inputs.toName);
-  core.info(`conversions: ${toJson(conversions)}`);
+  logJson("conversions", conversions);
 
   // Replace file contents
   for (const f of files) {
@@ -16543,7 +16545,7 @@ function rename(inputs) {
 
   // Get directories where the files are located
   const filesAndDirs = getDirsFromFiles(files);
-  core.info(`renaming ${filesAndDirs.length} files and directories`);
+  logJson(`renaming ${filesAndDirs.length} files and directories`, filesAndDirs);
 
   // Rename files and directories
   const cwd = process.cwd();
@@ -16563,6 +16565,14 @@ function rename(inputs) {
     commitAndPush(inputs.commitMessage);
   } else {
     core.info("Skip commit & push because dry-run is true");
+  }
+}
+
+function ignoreFiles(files, ignorePaths) {
+  if (ignorePaths.length) {
+    return [micromatch.not(files, ignorePaths), micromatch(files, ignorePaths)];
+  } else {
+    return [files, []];
   }
 }
 
@@ -16599,15 +16609,24 @@ module.exports = {
 /***/ }),
 
 /***/ 6254:
-/***/ ((module) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const core = __nccwpck_require__(2186);
 
 function toJson(obj) {
   return JSON.stringify(obj, null, 2);
 }
 
-module.exports = {
-  toJson
+function logJson(message, obj) {
+  core.startGroup(message);
+  core.info(toJson(obj));
+  core.endGroup();
 }
+
+module.exports = {
+  toJson,
+  logJson,
+};
 
 
 /***/ }),
