@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Test
+      - name: Run test
         run: |
           npm install
           npm run test
@@ -40,3 +40,20 @@ jobs:
         run: |
           cat .github/test.txt
           [ "$(cat .github/test.txt)" = "hoge-piyo,hoge_piyo,hogePiyo,HogePiyo" ]
+  
+  test-noop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - name: Rename project with the same name
+        uses: ./
+        with:
+          from-name: "foo-bar"
+          to-name: "foo_bar"
+      - name: Assert the working tree is clean
+        run: |
+          git status
+          [[ "$(git status)" =~ "nothing to commit, working tree clean" ]] 
