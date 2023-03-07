@@ -51,11 +51,6 @@ jobs:
         with:
           from-name: "foo-bar"
           to-name: "foo_bar"
-      - name: Rename project with the same name
-        uses: ./
-        with:
-          from-name: "foo-bar"
-          to-name: "foo_bar"
       - name: Assert
         run: |
           git diff-index --cached --quiet HEAD
