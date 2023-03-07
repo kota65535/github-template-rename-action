@@ -56,4 +56,4 @@ jobs:
       - name: Assert the working tree is clean
         run: |
           git diff-index --cached --quiet HEAD
-          [ "$(git log origin/main..main)" = "" ]
+          [[ "$(git status)" =~ "nothing to commit, working directory clean" ]] 
