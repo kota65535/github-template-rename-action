@@ -55,7 +55,8 @@ function rename(inputs) {
   }
 
   if (!inputs.dryRun) {
-    commitAndPush(inputs.commitMessage);
+    const sha = commitAndPush(inputs.commitMessage);
+    core.setOutput("commit-hash", sha);
   } else {
     core.info("Skip commit & push because dry-run is true");
   }
