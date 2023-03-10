@@ -44,6 +44,12 @@ function commitAndPush(message) {
   }
   exec("git", ["commit", "-m", message]);
   exec("git", ["push", "origin", "HEAD"]);
+  return getLatestCommit();
+}
+
+function getLatestCommit() {
+  const { stdout } = exec("git", ["rev-parse", "HEAD"]);
+  return stdout;
 }
 
 module.exports = {
