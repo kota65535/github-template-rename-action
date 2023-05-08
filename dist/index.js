@@ -16512,7 +16512,7 @@ module.exports = {
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const path = __nccwpck_require__(1017);
-const fs = (__nccwpck_require__(7147).promises);
+const fs = __nccwpck_require__(7147);
 const core = __nccwpck_require__(2186);
 const micromatch = __nccwpck_require__(6228);
 const { createConversions, convert } = __nccwpck_require__(4255);
@@ -16525,14 +16525,14 @@ async function main() {
   const creds = getGitCredentials();
   setGitCredentials(inputs.githubToken);
   try {
-    await rename(inputs);
+    rename(inputs);
   } finally {
     // Restore credentials
     setGitCredentials(creds);
   }
 }
 
-async function rename(inputs) {
+function rename(inputs) {
   let files = listFiles();
   let ignored;
   [files, ignored] = ignoreFiles(files, inputs.ignorePaths);
@@ -16544,10 +16544,10 @@ async function rename(inputs) {
 
   // Replace file contents
   for (const f of files) {
-    const s = await fs.readFile(f, "utf8");
+    const s = fs.readFileSync(f, "utf8");
     const converted = convert(conversions, s);
     if (s !== converted) {
-      await fs.writeFile(f, converted);
+      fs.writeFileSync(f, s);
     }
   }
 
