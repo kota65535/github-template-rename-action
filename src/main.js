@@ -1,5 +1,5 @@
 const path = require("path");
-const fs = require("fs");
+const fs = require("fs").promises;
 const core = require("@actions/core");
 const micromatch = require("micromatch");
 const { createConversions, convert } = require("./convert");
@@ -12,14 +12,14 @@ async function main() {
   const creds = getGitCredentials();
   setGitCredentials(inputs.githubToken);
   try {
-    rename(inputs);
+    await rename(inputs);
   } finally {
     // Restore credentials
     setGitCredentials(creds);
   }
 }
 
-function rename(inputs) {
+async function rename(inputs) {
   let files = listFiles();
   let ignored;
   [files, ignored] = ignoreFiles(files, inputs.ignorePaths);
@@ -31,9 +31,11 @@ function rename(inputs) {
 
   // Replace file contents
   for (const f of files) {
-    let s = fs.readFileSync(f);
-    s = convert(conversions, s);
-    fs.writeFileSync(f, s);
+    const s = await fs.readFile(f, "utf8");
+    const converted = convert(conversions, s);
+    if (s !== converted) {
+      await fs.writeFile(f, converted);
+    }
   }
 
   // Get directories where the files are located
