@@ -31,9 +31,11 @@ function rename(inputs) {
 
   // Replace file contents
   for (const f of files) {
-    let s = fs.readFileSync(f, "utf8");
-    s = convert(conversions, s);
-    fs.writeFileSync(f, s, "utf8");
+    const s = fs.readFileSync(f, "utf8");
+    const converted = convert(conversions, s);
+    if (s !== converted) {
+      fs.writeFileSync(f, converted, "utf8");
+    }
   }
 
   // Get directories where the files are located
