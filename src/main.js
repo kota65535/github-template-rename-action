@@ -34,7 +34,7 @@ function rename(inputs) {
     const s = fs.readFileSync(f, "utf8");
     const converted = convert(conversions, s);
     if (s !== converted) {
-      fs.writeFileSync(f, s);
+      fs.writeFileSync(f, s, "utf8");
     }
   }
 
