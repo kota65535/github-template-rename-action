@@ -10,7 +10,12 @@ function logJson(message, obj) {
   core.endGroup();
 }
 
+function ensurePrefix(prefix, str) {
+  return str.startsWith(prefix) ? str : `${prefix}${str}`;
+}
+
 module.exports = {
   toJson,
   logJson,
+  ensurePrefix,
 };

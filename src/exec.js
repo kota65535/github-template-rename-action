@@ -1,5 +1,5 @@
-const execa = require("execa");
 const core = require("@actions/core");
+const execa = require("execa");
 
 const exec = (file, options) => {
   core.debug(`running command: ${file} ${(options || []).join(" ")}`);

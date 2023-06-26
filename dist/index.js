@@ -16338,8 +16338,8 @@ module.exports = {
 /***/ 3264:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-const execa = __nccwpck_require__(5447);
 const core = __nccwpck_require__(2186);
+const execa = __nccwpck_require__(5447);
 
 const exec = (file, options) => {
   core.debug(`running command: ${file} ${(options || []).join(" ")}`);
@@ -16362,6 +16362,10 @@ const core = __nccwpck_require__(2186);
 const { exec } = __nccwpck_require__(3264);
 
 const extraHeaderKey = `http.https://github.com/.extraHeader`;
+
+function createBranch(branch, base) {
+  exec("git", ["checkout", "-b", branch, base]);
+}
 
 function listFiles() {
   const { stdout } = exec("git", ["ls-files"]);
@@ -16393,9 +16397,19 @@ function setGitCredentials(token) {
   exec("git", ["config", extraHeaderKey, `AUTHORIZATION: basic ${base64Token}`]);
 }
 
-function commitAndPush(message) {
+function commit(files, message) {
   setUserAsBot();
-  exec("git", ["add", "."]);
+  if (files) {
+    for (const f of files) {
+      try {
+        exec("git", ["add", f]);
+      } catch (e) {
+        // do nothing
+      }
+    }
+  } else {
+    exec("git", ["add", "."]);
+  }
   try {
     exec("git", ["diff-index", "--cached", "--quiet", "HEAD"]);
     return;
@@ -16403,20 +16417,31 @@ function commitAndPush(message) {
     // do nothing
   }
   exec("git", ["commit", "-m", message]);
-  exec("git", ["push", "origin", "HEAD"]);
-  return getLatestCommit();
 }
 
-function getLatestCommit() {
-  const { stdout } = exec("git", ["rev-parse", "HEAD"]);
-  return stdout;
+function push() {
+  exec("git", ["push", "-f", "origin", "HEAD"]);
+}
+
+function reset() {
+  exec("git", ["reset", "--hard"]);
+  exec("git", ["clean", "-fd"]);
+}
+
+function getDiffCommits(refA, refB) {
+  const { stdout } = exec("git", ["log", `${refA}..${refB}`, "--oneline", "--no-merges"]);
+  return stdout.split("\n").filter((s) => s);
 }
 
 module.exports = {
+  createBranch,
   listFiles,
   getGitCredentials,
   setGitCredentials,
-  commitAndPush,
+  commit,
+  push,
+  reset,
+  getDiffCommits,
 };
 
 
@@ -16425,8 +16450,8 @@ module.exports = {
 /***/ 8396:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-const { getOctokit } = __nccwpck_require__(5438);
 const { context } = __nccwpck_require__(5438);
+const { getOctokit } = __nccwpck_require__(5438);
 
 let octokit;
 
@@ -16434,10 +16459,55 @@ const initOctokit = (token) => {
   octokit = getOctokit(token);
 };
 
-const getRepo = async () => {
+const getRepo = async (owner, repo) => {
+  owner ??= context.repo.owner;
+  repo ??= context.repo.repo;
   const res = await octokit.rest.repos.get({
+    owner,
+    repo,
+  });
+  return res.data;
+};
+
+const addLabels = async (prNum, labels) => {
+  const res = await octokit.rest.issues.addLabels({
     owner: context.repo.owner,
     repo: context.repo.repo,
+    issue_number: prNum,
+    labels,
+  });
+  return res.data;
+};
+
+const createPr = async (title, head, base) => {
+  const res = await octokit.rest.pulls.create({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    title,
+    head,
+    base,
+  });
+  return res.data;
+};
+
+const updatePr = async (prNum, title, head, base) => {
+  const res = await octokit.rest.pulls.update({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    pull_number: prNum,
+    title,
+    head,
+    base,
+  });
+  return res.data;
+};
+
+const listPrs = async (head, base) => {
+  const res = await octokit.rest.pulls.list({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    head: `${context.repo.owner}:${head}`,
+    base,
   });
   return res.data;
 };
@@ -16445,6 +16515,10 @@ const getRepo = async () => {
 module.exports = {
   initOctokit,
   getRepo,
+  createPr,
+  updatePr,
+  listPrs,
+  addLabels,
 };
 
 
@@ -16454,7 +16528,7 @@ module.exports = {
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const core = __nccwpck_require__(2186);
-const { initOctokit, getRepo } = __nccwpck_require__(8396);
+const { getRepo, initOctokit } = __nccwpck_require__(8396);
 const { logJson } = __nccwpck_require__(6254);
 
 const getInputs = async () => {
@@ -16464,37 +16538,48 @@ const getInputs = async () => {
     .getInput("paths-ignore")
     .split("\n")
     .filter((f) => f);
-  const commitMessage = core.getInput("commit-message");
-  const dryRun = core.getInput("dry-run") === "true";
-
   let githubToken = core.getInput("github-token");
   const defaultGithubToken = core.getInput("default-github-token");
+  const prBranch = core.getInput("pr-branch");
+  let prBase = core.getInput("pr-base-branch");
+  const prTitle = core.getInput("pr-title");
+  const prLabels = core
+    .getInput("pr-labels")
+    .split("\n")
+    .filter((f) => f);
+  const dryRun = core.getInput("dry-run") === "true";
 
   githubToken = githubToken || process.env.GITHUB_TOKEN || defaultGithubToken;
   if (!githubToken) {
     throw new Error("No GitHub token provided");
   }
 
-  if (!(fromName && toName)) {
-    initOctokit(githubToken);
-    const repo = await getRepo();
-    if (!fromName) {
-      if (!repo.template_repository) {
-        throw new Error("Could not get template repository. Try GitHub personal access token for github-token input");
-      }
-      fromName = repo.template_repository.name;
+  initOctokit(githubToken);
+
+  const repo = await getRepo();
+
+  if (!fromName) {
+    if (!repo.template_repository) {
+      throw new Error("Could not get template repository. Try GitHub personal access token for github-token input");
     }
-    if (!toName) {
-      toName = repo.name;
-    }
+    fromName = repo.template_repository.name;
+  }
+  if (!toName) {
+    toName = repo.name;
+  }
+  if (!prBase) {
+    prBase = repo.default_branch;
   }
 
   const ret = {
     fromName,
     toName,
-    githubToken,
-    commitMessage,
     ignorePaths,
+    githubToken,
+    prBranch,
+    prBase,
+    prTitle,
+    prLabels,
     dryRun,
   };
   logJson("inputs", ret);
@@ -16511,53 +16596,94 @@ module.exports = {
 /***/ 1713:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-const path = __nccwpck_require__(1017);
 const fs = __nccwpck_require__(7147);
+const path = __nccwpck_require__(1017);
 const core = __nccwpck_require__(2186);
 const micromatch = __nccwpck_require__(6228);
-const { createConversions, convert } = __nccwpck_require__(4255);
-const { getGitCredentials, setGitCredentials, listFiles, commitAndPush } = __nccwpck_require__(109);
+const { convert, createConversions } = __nccwpck_require__(4255);
+const {
+  commit,
+  createBranch,
+  getDiffCommits,
+  getGitCredentials,
+  listFiles,
+  push,
+  reset,
+  setGitCredentials,
+} = __nccwpck_require__(109);
+const { addLabels, createPr, listPrs, updatePr } = __nccwpck_require__(8396);
 const { getInputs } = __nccwpck_require__(6);
-const { logJson } = __nccwpck_require__(6254);
+const { ensurePrefix, logJson } = __nccwpck_require__(6254);
 
 async function main() {
   const inputs = await getInputs();
   const creds = getGitCredentials();
   setGitCredentials(inputs.githubToken);
   try {
-    rename(inputs);
+    await rename(inputs);
   } finally {
     // Restore credentials
     setGitCredentials(creds);
   }
+  core.setOutput("pr-branch", inputs.prBranch);
 }
 
-function rename(inputs) {
+async function rename(inputs) {
+  reset();
+
   let files = listFiles();
   let ignored;
   [files, ignored] = ignoreFiles(files, inputs.ignorePaths);
   logJson(`ignored ${ignored.length} files`, ignored);
-  logJson(`replacing ${files.length} files`, files);
 
   const conversions = createConversions(inputs.fromName, inputs.toName);
   logJson("conversions", conversions);
 
+  replaceFiles(files, conversions);
+  files = renameFiles(files, inputs.fromName, inputs.toName);
+  logJson(`replaced & renamed ${files.length} files`, files);
+
+  const prBaseWithRemote = ensurePrefix("origin/", inputs.prBase);
+
+  // Checkout PR branch
+  createBranch(inputs.prBranch, prBaseWithRemote);
+  commit(files, "renamed");
+
+  if (inputs.dryRun) {
+    core.info("Skip creating PR because dry-run is true");
+    return;
+  }
+
+  // Push
+  push();
+
+  // Create PR if there is any commit
+  if (getDiffCommits(prBaseWithRemote, inputs.prBranch).length > 0) {
+    await createOrUpdatePr(inputs);
+  }
+}
+
+function replaceFiles(files, conversions) {
+  const existingFiles = files.filter((f) => fs.existsSync(f));
+
   // Replace file contents
-  for (const f of files) {
+  for (const f of existingFiles) {
     const s = fs.readFileSync(f, "utf8");
     const converted = convert(conversions, s);
     if (s !== converted) {
       fs.writeFileSync(f, converted, "utf8");
     }
   }
+}
 
+function renameFiles(files, conversions) {
   // Get directories where the files are located
   const filesAndDirs = getDirsFromFiles(files);
-  logJson(`renaming ${filesAndDirs.length} files and directories`, filesAndDirs);
+  const existingFilesAndDirs = filesAndDirs.filter((f) => fs.existsSync(f));
 
   // Rename files and directories
   const cwd = process.cwd();
-  for (const f of filesAndDirs) {
+  for (const f of existingFilesAndDirs) {
     const fromBase = path.basename(f);
     const fromDir = path.dirname(f);
     const toBase = convert(conversions, fromBase);
@@ -16569,12 +16695,7 @@ function rename(inputs) {
     }
   }
 
-  if (!inputs.dryRun) {
-    const sha = commitAndPush(inputs.commitMessage);
-    core.setOutput("commit-hash", sha);
-  } else {
-    core.info("Skip commit & push because dry-run is true");
-  }
+  return files.map((f) => convert(conversions, f));
 }
 
 function ignoreFiles(files, ignorePaths) {
@@ -16609,6 +16730,23 @@ function getDirsFromFiles(files) {
   return ret;
 }
 
+async function createOrUpdatePr(inputs) {
+  const prs = await listPrs(inputs.prBranch, inputs.prBase);
+  let prNum;
+  if (prs.length) {
+    prNum = prs[0].number;
+    core.info(`updating existing PR #${prNum}`);
+    await updatePr(prNum, inputs.prTitle, inputs.prBranch, inputs.prBase);
+  } else {
+    core.info("creating PR");
+    const res = await createPr(inputs.prTitle, inputs.prBranch, inputs.prBase);
+    prNum = res.number;
+  }
+  if (inputs.prLabels.length > 0) {
+    await addLabels(prNum, inputs.prLabels);
+  }
+}
+
 module.exports = {
   main,
   rename,
@@ -16632,9 +16770,14 @@ function logJson(message, obj) {
   core.endGroup();
 }
 
+function ensurePrefix(prefix, str) {
+  return str.startsWith(prefix) ? str : `${prefix}${str}`;
+}
+
 module.exports = {
   toJson,
   logJson,
+  ensurePrefix,
 };
 
 

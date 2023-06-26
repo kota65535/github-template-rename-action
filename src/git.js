@@ -3,6 +3,10 @@ const { exec } = require("./exec");
 
 const extraHeaderKey = `http.https://github.com/.extraHeader`;
 
+function createBranch(branch, base) {
+  exec("git", ["checkout", "-b", branch, base]);
+}
+
 function listFiles() {
   const { stdout } = exec("git", ["ls-files"]);
   return stdout.split("\n").filter((s) => s);
@@ -33,9 +37,19 @@ function setGitCredentials(token) {
   exec("git", ["config", extraHeaderKey, `AUTHORIZATION: basic ${base64Token}`]);
 }
 
-function commitAndPush(message) {
+function commit(files, message) {
   setUserAsBot();
-  exec("git", ["add", "."]);
+  if (files) {
+    for (const f of files) {
+      try {
+        exec("git", ["add", f]);
+      } catch (e) {
+        // do nothing
+      }
+    }
+  } else {
+    exec("git", ["add", "."]);
+  }
   try {
     exec("git", ["diff-index", "--cached", "--quiet", "HEAD"]);
     return;
@@ -43,18 +57,29 @@ function commitAndPush(message) {
     // do nothing
   }
   exec("git", ["commit", "-m", message]);
-  exec("git", ["push", "origin", "HEAD"]);
-  return getLatestCommit();
 }
 
-function getLatestCommit() {
-  const { stdout } = exec("git", ["rev-parse", "HEAD"]);
-  return stdout;
+function push() {
+  exec("git", ["push", "-f", "origin", "HEAD"]);
+}
+
+function reset() {
+  exec("git", ["reset", "--hard"]);
+  exec("git", ["clean", "-fd"]);
+}
+
+function getDiffCommits(refA, refB) {
+  const { stdout } = exec("git", ["log", `${refA}..${refB}`, "--oneline", "--no-merges"]);
+  return stdout.split("\n").filter((s) => s);
 }
 
 module.exports = {
+  createBranch,
   listFiles,
   getGitCredentials,
   setGitCredentials,
-  commitAndPush,
+  commit,
+  push,
+  reset,
+  getDiffCommits,
 };

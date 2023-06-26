@@ -18,6 +18,16 @@ inputs:
   default-github-token:
     description: "Default gitHub token"
     default: ${{ github.token }}
+  pr-branch:
+    description: "PR head branch"
+    default: "template-rename"
+  pr-base-branch:
+    description: "PR base branch"
+  pr-title:
+    description: "PR title"
+    default: "Template rename"
+  pr-labels:
+    description: "PR labels"
   dry-run:
     description: "Dry run or not"
     default: "false"
