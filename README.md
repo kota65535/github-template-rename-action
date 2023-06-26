@@ -10,8 +10,10 @@ This action does it for you.
 
 ## Features
 
+Creates PR that includes the following changes.
+
 - Replaces project name identifiers in all files with various naming conventions. For example:
-  - Concatenated (ex. `foobarbaz`)
+  - Flat case (ex. `foobarbaz`)
   - Kebab case (ex. `foo-bar-baz`)
   - Snake case (ex. `foo_bar_baz`)
   - Camel case (ex. `fooBarBaz`)
@@ -25,8 +27,11 @@ This action does it for you.
 | `from-name`      | Project name to be replaced. Should be kebab, snake, camel or pascal case.                     | No       | Name of the template repository                         |
 | `to-name`        | New project name to replace with. Should be kebab, snake, camel or pascal case.                | No       | Name of your repository                                 |
 | `paths-ignore`   | Paths to ignore. Accepts [micromatch](https://github.com/micromatch/micromatch) glob patterns. | No       | N/A                                                     |
-| `commit-message` | Commit message                                                                                 | No       | `rename`                                                | 
 | `github-token`   | GitHub token                                                                                   | No       | `${{ env.GITHUB_TOKEN }}` or<br/> `${{ github.token }}` | 
+| `pr-branch`      | PR branch name                                                                                 | No       | `template-rename`                                       |
+| `pr-base-branch` | PR base branch name                                                                            | No       | Default branch of your repository                       |
+| `pr-title`       | PR title                                                                                       | No       | `Template rename`                                       |
+| `pr-labels`      | PR labels to add                                                                               | No       | N/A                                                     |
 | `dry-run`        | Dry-run or not. If true, it does not perform commit & push.                                    | No       | `false`                                                 |
 
 ## Usage
@@ -40,6 +45,7 @@ This action does it for you.
   #   the_sample -> my_project
   #   theSample  -> myProject
   #   TheSample  -> MyProject
+  #   the sample -> my project
   #
   - uses: kota65535/github-template-rename-action@v1
     with:
