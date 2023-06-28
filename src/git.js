@@ -33,7 +33,15 @@ function setGitCredentials(token) {
   // cf. https://github.com/actions/checkout/blob/main/src/git-auth-helper.ts#L57
   const base64Token = Buffer.from(`x-access-token:${token}`, "utf8").toString("base64");
   core.setSecret(base64Token);
-  exec("git", ["config", "--unset-all", extraHeaderKey, "^AUTHORIZATION: basic"]);
+  try {
+    exec("git", ["config", "--unset-all", extraHeaderKey, "^AUTHORIZATION: basic"]);
+  } catch (e) {
+    if (e.exitCode === 5) {
+      core.info("already unset, continue");
+    } else {
+      throw e;
+    }
+  }
   exec("git", ["config", extraHeaderKey, `AUTHORIZATION: basic ${base64Token}`]);
 }
 
