@@ -24,7 +24,7 @@ async function rename(inputs) {
 
   // Checkout PR branch
   createBranch(inputs.prBranch, prBaseWithRemote);
-  commit(files, "renamed");
+  commit("renamed");
 
   if (inputs.dryRun) {
     core.info("Skip creating PR because dry-run is true");
@@ -128,5 +128,5 @@ module.exports = {
   rename,
   renameFiles,
   replaceFiles,
-  ignoreFiles
+  ignoreFiles,
 };

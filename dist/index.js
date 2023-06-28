@@ -20940,7 +20940,7 @@ function setGitCredentials(token) {
   exec("git", ["config", extraHeaderKey, `AUTHORIZATION: basic ${base64Token}`]);
 }
 
-function commit(files, message) {
+function commit(message, files) {
   setUserAsBot();
   if (files) {
     for (const f of files) {
@@ -21193,7 +21193,7 @@ async function rename(inputs) {
 
   // Checkout PR branch
   createBranch(inputs.prBranch, prBaseWithRemote);
-  commit(files, "renamed");
+  commit("renamed");
 
   if (inputs.dryRun) {
     core.info("Skip creating PR because dry-run is true");
@@ -21297,7 +21297,7 @@ module.exports = {
   rename,
   renameFiles,
   replaceFiles,
-  ignoreFiles
+  ignoreFiles,
 };
 
 

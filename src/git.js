@@ -37,7 +37,7 @@ function setGitCredentials(token) {
   exec("git", ["config", extraHeaderKey, `AUTHORIZATION: basic ${base64Token}`]);
 }
 
-function commit(files, message) {
+function commit(message, files) {
   setUserAsBot();
   if (files) {
     for (const f of files) {
