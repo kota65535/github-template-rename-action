@@ -24,7 +24,7 @@ async function rename(inputs) {
 
   // Checkout PR branch
   createBranch(inputs.prBranch, prBaseWithRemote);
-  commit("renamed");
+  commit(inputs.commitMessage);
 
   if (inputs.dryRun) {
     core.info("Skip creating PR because dry-run is true");

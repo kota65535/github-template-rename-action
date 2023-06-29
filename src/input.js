@@ -9,6 +9,7 @@ const getInputs = async () => {
     .getInput("paths-ignore")
     .split("\n")
     .filter((f) => f);
+  const commitMessage = core.getInput("commit-message");
   let githubToken = core.getInput("github-token");
   const defaultGithubToken = core.getInput("default-github-token");
   const prBranch = core.getInput("pr-branch");
@@ -46,6 +47,7 @@ const getInputs = async () => {
     fromName,
     toName,
     ignorePaths,
+    commitMessage,
     githubToken,
     prBranch,
     prBase,
