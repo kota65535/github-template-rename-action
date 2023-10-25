@@ -52,7 +52,7 @@ jobs:
         uses: ./
         with:
           from-name: "foo-bar"
-          to-name: "foo_bar"
+          to-name: "foo-bar"
       - name: Assert the working tree is clean
         run: |
           git status
