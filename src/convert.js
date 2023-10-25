@@ -1,11 +1,4 @@
-const {
-  camelCase,
-  snakeCase,
-  capitalCase,
-  constantCase,
-  noCase,
-  paramCase,
-} = require("change-case");
+const { camelCase, snakeCase, capitalCase, constantCase, noCase, paramCase } = require("change-case");
 
 function createConversions(fromName, toName) {
   return [
